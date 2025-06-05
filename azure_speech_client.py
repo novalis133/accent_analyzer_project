@@ -130,9 +130,11 @@ def analyze_audio_with_azure(audio_filepath: str) -> Optional[Dict]:
         print(f"DEBUG_AZURE_LANGUAGE_CONFIG: Setting up language identification...")
         
         # Configure Language Identification for English variants
+        # NOTE: Azure Speech Services DetectAudioAtStart mode supports maximum 4 languages
         auto_detect_source_language_config = speechsdk.languageconfig.AutoDetectSourceLanguageConfig(
-            languages=["en-US", "en-GB", "en-AU", "en-CA", "en-IN", "en-NZ", "en-ZA"]
+            languages=["en-US", "en-GB", "en-AU", "en-CA"]  # Reduced to 4 languages as per Azure limitation
         )
+        print(f"DEBUG_AZURE_LANGUAGE_LIST: Using 4 languages: en-US, en-GB, en-AU, en-CA")
         
         print(f"DEBUG_AZURE_AUDIO_CONFIG: Creating audio configuration...")
         
