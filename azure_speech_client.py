@@ -6,6 +6,9 @@ import azure.cognitiveservices.speech as speechsdk
 import streamlit as st
 from dotenv import load_dotenv
 
+# VERSION STAMP - CHANGE WITH EACH DEPLOYMENT TO CONFIRM LATEST CODE IS RUNNING
+print("AZURE_SPEECH_CLIENT_VERSION_CHECK: v1.2 - PropertyId Fix with Enhanced Logging - 2025-01-05")
+
 # Load environment variables for local development
 load_dotenv()
 

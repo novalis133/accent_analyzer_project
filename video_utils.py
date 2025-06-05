@@ -8,6 +8,9 @@ import tempfile
 import traceback
 from typing import Optional
 
+# VERSION STAMP - COMPREHENSIVE LOGGING FOR YOUTUBE DEBUGGING
+print("VIDEO_UTILS_VERSION_CHECK: v2.1 - Enhanced YouTube Debugging with Full Tracebacks - 2025-01-05")
+
 
 def prepare_audio_from_local_file(input_filepath: str, output_dir: str) -> Optional[str]:
     """
