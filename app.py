@@ -166,6 +166,10 @@ def main():
 def process_uploaded_file(uploaded_file):
     """Process uploaded file and analyze accent."""
     
+    print(f"DEBUG_APP_UPLOAD: Starting file upload processing")
+    print(f"DEBUG_APP_UPLOAD_FILE: {uploaded_file.name}")
+    print(f"DEBUG_APP_UPLOAD_SIZE: {len(uploaded_file.getbuffer())} bytes")
+    
     # Create progress indicators
     progress_bar = st.progress(0)
     status_text = st.empty()
@@ -175,17 +179,29 @@ def process_uploaded_file(uploaded_file):
         progress_bar.progress(10)
         
         with tempfile.TemporaryDirectory() as temp_dir:
+            print(f"DEBUG_APP_TEMP_DIR: {temp_dir}")
+            
             # Save uploaded file to temporary location
             temp_input_path = os.path.join(temp_dir, uploaded_file.name)
+            print(f"DEBUG_APP_SAVING_TO: {temp_input_path}")
             
             with open(temp_input_path, "wb") as f:
                 f.write(uploaded_file.getbuffer())
+            
+            print(f"DEBUG_APP_SAVED_SIZE: {os.path.getsize(temp_input_path)} bytes")
             
             status_text.text("🔊 Converting audio with ffmpeg...")
             progress_bar.progress(30)
             
             # Process the local file
             audio_path = prepare_audio_from_local_file(temp_input_path, temp_dir)
+            
+            print(f"DEBUG_APP_AUDIO_PATH_RESULT: {audio_path}")
+            
+            if audio_path and os.path.exists(audio_path):
+                print(f"DEBUG_APP_AUDIO_EXISTS: Yes, size = {os.path.getsize(audio_path)} bytes")
+            else:
+                print(f"DEBUG_APP_AUDIO_EXISTS: No, audio_path = {audio_path}")
             
             if not audio_path:
                 st.error("❌ Failed to process the uploaded file. Ensure it's a valid video/audio format and ffmpeg is working.")
@@ -197,6 +213,8 @@ def process_uploaded_file(uploaded_file):
             
             azure_result = analyze_audio_with_azure(audio_path)
             
+            print(f"DEBUG_APP_AZURE_RESULT: {azure_result}")
+            
             if not azure_result:
                 st.error("❌ Failed to analyze audio with Azure Speech Services. Please check your API credentials.")
                 return
@@ -204,6 +222,16 @@ def process_uploaded_file(uploaded_file):
             # Check for errors in Azure result
             if azure_result.get("error"):
                 st.error(f"❌ Azure Speech Services error: {azure_result['error']}")
+                
+                # Display detailed error information if available
+                if azure_result.get("azure_error_details_debug"):
+                    with st.expander("🔍 Detailed Error Information"):
+                        st.code(azure_result["azure_error_details_debug"])
+                        
+                if azure_result.get("exception_details"):
+                    with st.expander("🐛 Exception Details"):
+                        st.code(azure_result["exception_details"])
+                        
                 return
             
             # Determine accent and confidence
@@ -219,6 +247,9 @@ def process_uploaded_file(uploaded_file):
             display_results(final_result, input_type="file", input_name=uploaded_file.name)
             
     except Exception as e:
+        print(f"DEBUG_APP_EXCEPTION: Error processing uploaded file: {str(e)}")
+        import traceback
+        traceback.print_exc()
         st.error(f"❌ An error occurred while processing the uploaded file: {str(e)}")
     finally:
         # Clean up progress indicators
@@ -229,6 +260,9 @@ def process_uploaded_file(uploaded_file):
 def process_video_url(video_url: str):
     """Process video URL and analyze accent."""
     
+    print(f"DEBUG_APP_URL: Starting URL processing")
+    print(f"DEBUG_APP_URL_INPUT: {video_url}")
+    
     # Create progress indicators
     progress_bar = st.progress(0)
     status_text = st.empty()
@@ -238,7 +272,16 @@ def process_video_url(video_url: str):
         progress_bar.progress(20)
         
         with tempfile.TemporaryDirectory() as temp_dir:
+            print(f"DEBUG_APP_TEMP_DIR: {temp_dir}")
+            
             audio_path = download_and_extract_audio(video_url, temp_dir)
+            
+            print(f"DEBUG_APP_AUDIO_PATH_RESULT: {audio_path}")
+            
+            if audio_path and os.path.exists(audio_path):
+                print(f"DEBUG_APP_AUDIO_EXISTS: Yes, size = {os.path.getsize(audio_path)} bytes")
+            else:
+                print(f"DEBUG_APP_AUDIO_EXISTS: No, audio_path = {audio_path}")
             
             if not audio_path:
                 st.error("❌ Failed to download video or extract audio. Please check the URL and try again.")
@@ -250,6 +293,8 @@ def process_video_url(video_url: str):
             
             azure_result = analyze_audio_with_azure(audio_path)
             
+            print(f"DEBUG_APP_AZURE_RESULT: {azure_result}")
+            
             if not azure_result:
                 st.error("❌ Failed to analyze audio with Azure Speech Services. Please check your API credentials.")
                 return
@@ -257,6 +302,16 @@ def process_video_url(video_url: str):
             # Check for errors in Azure result
             if azure_result.get("error"):
                 st.error(f"❌ Azure Speech Services error: {azure_result['error']}")
+                
+                # Display detailed error information if available
+                if azure_result.get("azure_error_details_debug"):
+                    with st.expander("🔍 Detailed Error Information"):
+                        st.code(azure_result["azure_error_details_debug"])
+                        
+                if azure_result.get("exception_details"):
+                    with st.expander("🐛 Exception Details"):
+                        st.code(azure_result["exception_details"])
+                        
                 return
             
             # Determine accent and confidence
@@ -272,6 +327,9 @@ def process_video_url(video_url: str):
             display_results(final_result, input_type="url", input_name=video_url)
             
     except Exception as e:
+        print(f"DEBUG_APP_EXCEPTION: Error processing video URL: {str(e)}")
+        import traceback
+        traceback.print_exc()
         st.error(f"❌ An error occurred while processing the video URL: {str(e)}")
     finally:
         # Clean up progress indicators
@@ -372,11 +430,16 @@ def display_results(result: dict, input_type: str = "unknown", input_name: str =
             "Input Type": input_type.title()
         })
     
-    # Debug information
+    # Debug information (enhanced with Azure error details)
     if result.get("debug_info"):
         with st.expander("🐛 Debug Information"):
             debug_info = result["debug_info"]
             st.json(debug_info)
+            
+            # Show Azure error details if available
+            if debug_info.get("azure_error"):
+                st.subheader("Azure Error Details")
+                st.code(debug_info["azure_error"])
 
 
 if __name__ == "__main__":
