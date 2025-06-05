@@ -170,8 +170,8 @@ def analyze_audio_with_azure(audio_filepath: str) -> Optional[Dict]:
             # Extract confidence from detailed JSON if available
             confidence = 0.0
             try:
-                if result.properties.get(speechsdk.PropertyId.SpeechServiceResponse_Json):
-                    json_result = json.loads(result.properties[speechsdk.PropertyId.SpeechServiceResponse_Json])
+                if result.properties.get(speechsdk.PropertyId.SpeechServiceResponse_JsonResult):
+                    json_result = json.loads(result.properties[speechsdk.PropertyId.SpeechServiceResponse_JsonResult])
                     print(f"DEBUG_AZURE_JSON_RESPONSE: {json.dumps(json_result, indent=2)}")
                     
                     # Try to extract confidence from different possible locations in the JSON
