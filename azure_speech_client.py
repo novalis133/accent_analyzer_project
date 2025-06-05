@@ -220,21 +220,19 @@ def analyze_audio_with_azure(audio_filepath: str) -> Optional[Dict]:
             print(f"DEBUG_AZURE_CANCELED: Speech Recognition canceled")
             print(f"DEBUG_AZURE_CANCEL_REASON: {cancellation_details.reason}")
             
-            error_details = None
+            error_details_str = None
             if cancellation_details.reason == speechsdk.CancellationReason.Error:
-                error_details = cancellation_details.error_details
-                print(f"AZURE_SPEECH_CANCELLATION_ERROR_DETAILS: {error_details}")
-                print(f"DEBUG_AZURE_ERROR_CODE: {cancellation_details.error_code}")
+                error_details_str = str(cancellation_details.error_details) if cancellation_details.error_details else "No error details available"
+                # This is the key line for debugging - using distinct prefix
+                print(f"AZURE_SPEECH_CANCELLATION_ERROR_DETAILS: {error_details_str}")
             
             return {
                 "detected_locale": None,
                 "transcription_confidence": 0.0,
                 "transcript_text": "",
-                "error": f"Recognition canceled: {cancellation_details.reason}",
-                "error_details": error_details,
-                "azure_error_details_debug": error_details,
-                "cancellation_reason": str(cancellation_details.reason),
-                "error_code": str(cancellation_details.error_code) if hasattr(cancellation_details, 'error_code') else None
+                "error": f"Azure recognition canceled. Reason: {cancellation_details.reason}. Details: {error_details_str if error_details_str else 'N/A'}",
+                "azure_error_details_debug": error_details_str,
+                "cancellation_reason": str(cancellation_details.reason)
             }
         else:
             print(f"DEBUG_AZURE_UNKNOWN_REASON: Unknown result reason: {result.reason}")
