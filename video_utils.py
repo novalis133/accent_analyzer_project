@@ -9,7 +9,7 @@ import traceback
 from typing import Optional
 
 # VERSION STAMP - COMPREHENSIVE LOGGING FOR YOUTUBE DEBUGGING
-print("VIDEO_UTILS_VERSION_CHECK: v3.0 - Enhanced YouTube Processing with Fallback Conversion Strategy - 2025-01-05")
+print("VIDEO_UTILS_VERSION_CHECK: v3.1 - Enhanced Postprocessor Error Handling with Fallback Strategy - 2025-01-05")
 
 
 def prepare_audio_from_local_file(input_filepath: str, output_dir: str) -> Optional[str]:
@@ -184,7 +184,7 @@ def download_and_extract_audio(video_url: str, output_dir: str) -> Optional[str]
     
     print(f"DEBUG_YTDLP_EXPECTED_OUTPUT: {expected_wav_path}")
     
-    # Enhanced yt-dlp options with better postprocessor configuration
+    # Enhanced yt-dlp options with compatible postprocessor configuration
     ydl_opts = {
         'format': 'bestaudio/best',  # Get the best quality audio stream
         'outtmpl': os.path.join(output_dir, base_filename),  # Base name without extension
@@ -199,12 +199,6 @@ def download_and_extract_audio(video_url: str, output_dir: str) -> Optional[str]
             'key': 'FFmpegExtractAudio',
             'preferredcodec': 'wav',           # Request WAV output
             'preferredquality': '0',           # Best quality for WAV (lossless)
-            'postprocessor_args': [
-                '-acodec', 'pcm_s16le',  # Explicit WAV codec
-                '-ar', '16000',          # 16kHz sample rate for Azure Speech Services
-                '-ac', '1',              # Mono channel for Azure compatibility
-                '-f', 'wav',             # Force WAV container format
-            ],
         }],
         # Additional options for reliability
         'prefer_ffmpeg': True,    # Prefer ffmpeg over avconv
@@ -240,105 +234,6 @@ def download_and_extract_audio(video_url: str, output_dir: str) -> Optional[str]
                 error_code = ydl.download([video_url])
                 print(f"video_utils.py: ydl.download() completed with error_code: {error_code}")
                 
-                # Comprehensive file checking after download attempt
-                print(f"video_utils.py: Checking contents of output_dir: {output_dir}")
-                if os.path.exists(output_dir):
-                    all_files = os.listdir(output_dir)
-                    print(f"video_utils.py: Files in output_dir: {all_files}")
-                    
-                    # List detailed info for each file
-                    for file_name in all_files:
-                        file_path = os.path.join(output_dir, file_name)
-                        if os.path.isfile(file_path):
-                            file_size = os.path.getsize(file_path)
-                            print(f"video_utils.py: File details - {file_name}: {file_size} bytes")
-                else:
-                    print(f"video_utils.py: output_dir {output_dir} does not exist after download attempt!")
-                    return None
-                
-                print(f"video_utils.py: Expected final WAV path: {expected_wav_path}")
-                
-                # Primary check: Look for the expected WAV file
-                if os.path.exists(expected_wav_path):
-                    wav_size = os.path.getsize(expected_wav_path)
-                    print(f"video_utils.py: Expected WAV file found with size: {wav_size} bytes")
-                    
-                    if wav_size > 1000:  # Reasonable size check
-                        print(f"video_utils.py: PRIMARY SUCCESS - Returning WAV file: {expected_wav_path}")
-                        return expected_wav_path
-                    else:
-                        print(f"video_utils.py: Expected WAV file too small ({wav_size} bytes), treating as failure")
-                
-                # Secondary check: Look for any WAV files with our base filename
-                wav_files = []
-                for f_name in all_files:
-                    if f_name.lower().endswith('.wav') and base_filename in f_name:
-                        wav_path = os.path.join(output_dir, f_name)
-                        wav_size = os.path.getsize(wav_path)
-                        wav_files.append((f_name, wav_path, wav_size))
-                        print(f"video_utils.py: Found WAV file: {f_name}, Size: {wav_size} bytes")
-                
-                if wav_files:
-                    # Use the largest valid WAV file
-                    wav_files.sort(key=lambda x: x[2], reverse=True)  # Sort by size
-                    best_wav = wav_files[0]
-                    if best_wav[2] > 1000:
-                        print(f"video_utils.py: SECONDARY SUCCESS - Using WAV file: {best_wav[1]}")
-                        return best_wav[1]
-                
-                # Tertiary check: Look for intermediate audio files that need conversion
-                print(f"video_utils.py: No suitable WAV file found. Looking for intermediate audio files...")
-                audio_extensions = ['.m4a', '.mp4', '.webm', '.ogg', '.mp3', '.aac', '.opus']
-                intermediate_files = []
-                
-                for f_name in all_files:
-                    file_lower = f_name.lower()
-                    if any(file_lower.endswith(ext) for ext in audio_extensions):
-                        # Check if it matches our base filename pattern
-                        if base_filename in f_name or any(f_name.startswith(base_filename + ext) for ext in ['', '.']):
-                            audio_path = os.path.join(output_dir, f_name)
-                            audio_size = os.path.getsize(audio_path)
-                            intermediate_files.append((f_name, audio_path, audio_size))
-                            print(f"video_utils.py: Found intermediate audio file: {f_name}, Size: {audio_size} bytes")
-                
-                if intermediate_files:
-                    print(f"video_utils.py: Found {len(intermediate_files)} intermediate audio files, attempting fallback conversion...")
-                    
-                    # Try to convert the largest intermediate file
-                    intermediate_files.sort(key=lambda x: x[2], reverse=True)  # Sort by size
-                    largest_intermediate = intermediate_files[0]
-                    
-                    if largest_intermediate[2] > 1000:  # Reasonable size check
-                        print(f"video_utils.py: Attempting fallback conversion of: {largest_intermediate[1]}")
-                        
-                        # Use our direct ffmpeg conversion function
-                        fallback_wav_path = os.path.join(output_dir, f"{base_filename}_converted.wav")
-                        converted_path = convert_any_audio_to_wav(largest_intermediate[1], fallback_wav_path)
-                        
-                        if converted_path and os.path.exists(converted_path):
-                            converted_size = os.path.getsize(converted_path)
-                            print(f"video_utils.py: FALLBACK SUCCESS - Converted to: {converted_path} ({converted_size} bytes)")
-                            
-                            # Clean up intermediate file
-                            try:
-                                os.remove(largest_intermediate[1])
-                                print(f"video_utils.py: Cleaned up intermediate file: {largest_intermediate[1]}")
-                            except Exception as cleanup_error:
-                                print(f"video_utils.py: Warning - Could not clean up intermediate file: {cleanup_error}")
-                            
-                            return converted_path
-                        else:
-                            print("video_utils.py: FALLBACK FAILED - Direct ffmpeg conversion also failed")
-                    else:
-                        print(f"video_utils.py: Largest intermediate file too small ({largest_intermediate[2]} bytes)")
-                else:
-                    print("video_utils.py: No intermediate audio files found for conversion")
-                
-                # If we reach here, all strategies failed
-                print(f"video_utils.py: All conversion strategies failed for URL: {video_url}")
-                print(f"video_utils.py: yt-dlp error_code: {error_code}")
-                return None
-                
             except Exception as download_exception:
                 print(f"video_utils.py: EXCEPTION during ydl.download() call!")
                 print(f"video_utils.py: Download exception type: {type(download_exception)}")
@@ -346,8 +241,114 @@ def download_and_extract_audio(video_url: str, output_dir: str) -> Optional[str]
                 import traceback
                 print("video_utils.py: Download exception traceback follows:")
                 traceback.print_exc()
-                return None
                 
+                # Check if this is a postprocessor failure but download succeeded
+                if "ffprobe and ffmpeg not found" in str(download_exception) or "Postprocessing:" in str(download_exception):
+                    print("video_utils.py: This appears to be a postprocessor failure, but download may have succeeded.")
+                    print("video_utils.py: Continuing with file detection and fallback conversion...")
+                else:
+                    print("video_utils.py: Non-postprocessor download failure, returning None")
+                    return None
+                
+            # Comprehensive file checking after download attempt
+            print(f"video_utils.py: Checking contents of output_dir: {output_dir}")
+            if os.path.exists(output_dir):
+                all_files = os.listdir(output_dir)
+                print(f"video_utils.py: Files in output_dir: {all_files}")
+                
+                # List detailed info for each file
+                for file_name in all_files:
+                    file_path = os.path.join(output_dir, file_name)
+                    if os.path.isfile(file_path):
+                        file_size = os.path.getsize(file_path)
+                        print(f"video_utils.py: File details - {file_name}: {file_size} bytes")
+            else:
+                print(f"video_utils.py: output_dir {output_dir} does not exist after download attempt!")
+                return None
+            
+            print(f"video_utils.py: Expected final WAV path: {expected_wav_path}")
+            
+            # Primary check: Look for the expected WAV file
+            if os.path.exists(expected_wav_path):
+                wav_size = os.path.getsize(expected_wav_path)
+                print(f"video_utils.py: Expected WAV file found with size: {wav_size} bytes")
+                
+                if wav_size > 1000:  # Reasonable size check
+                    print(f"video_utils.py: PRIMARY SUCCESS - Returning WAV file: {expected_wav_path}")
+                    return expected_wav_path
+                else:
+                    print(f"video_utils.py: Expected WAV file too small ({wav_size} bytes), treating as failure")
+            
+            # Secondary check: Look for any WAV files with our base filename
+            wav_files = []
+            for f_name in all_files:
+                if f_name.lower().endswith('.wav') and base_filename in f_name:
+                    wav_path = os.path.join(output_dir, f_name)
+                    wav_size = os.path.getsize(wav_path)
+                    wav_files.append((f_name, wav_path, wav_size))
+                    print(f"video_utils.py: Found WAV file: {f_name}, Size: {wav_size} bytes")
+            
+            if wav_files:
+                # Use the largest valid WAV file
+                wav_files.sort(key=lambda x: x[2], reverse=True)  # Sort by size
+                best_wav = wav_files[0]
+                if best_wav[2] > 1000:
+                    print(f"video_utils.py: SECONDARY SUCCESS - Using WAV file: {best_wav[1]}")
+                    return best_wav[1]
+            
+            # Tertiary check: Look for intermediate audio files that need conversion
+            print(f"video_utils.py: No suitable WAV file found. Looking for intermediate audio files...")
+            audio_extensions = ['.m4a', '.mp4', '.webm', '.ogg', '.mp3', '.aac', '.opus']
+            intermediate_files = []
+            
+            for f_name in all_files:
+                file_lower = f_name.lower()
+                if any(file_lower.endswith(ext) for ext in audio_extensions):
+                    # Check if it matches our base filename pattern
+                    if base_filename in f_name or any(f_name.startswith(base_filename + ext) for ext in ['', '.']):
+                        audio_path = os.path.join(output_dir, f_name)
+                        audio_size = os.path.getsize(audio_path)
+                        intermediate_files.append((f_name, audio_path, audio_size))
+                        print(f"video_utils.py: Found intermediate audio file: {f_name}, Size: {audio_size} bytes")
+            
+            if intermediate_files:
+                print(f"video_utils.py: Found {len(intermediate_files)} intermediate audio files, attempting fallback conversion...")
+                
+                # Try to convert the largest intermediate file
+                intermediate_files.sort(key=lambda x: x[2], reverse=True)  # Sort by size
+                largest_intermediate = intermediate_files[0]
+                
+                if largest_intermediate[2] > 1000:  # Reasonable size check
+                    print(f"video_utils.py: Attempting fallback conversion of: {largest_intermediate[1]}")
+                    
+                    # Use our direct ffmpeg conversion function
+                    fallback_wav_path = os.path.join(output_dir, f"{base_filename}_converted.wav")
+                    converted_path = convert_any_audio_to_wav(largest_intermediate[1], fallback_wav_path)
+                    
+                    if converted_path and os.path.exists(converted_path):
+                        converted_size = os.path.getsize(converted_path)
+                        print(f"video_utils.py: FALLBACK SUCCESS - Converted to: {converted_path} ({converted_size} bytes)")
+                        
+                        # Clean up intermediate file
+                        try:
+                            os.remove(largest_intermediate[1])
+                            print(f"video_utils.py: Cleaned up intermediate file: {largest_intermediate[1]}")
+                        except Exception as cleanup_error:
+                            print(f"video_utils.py: Warning - Could not clean up intermediate file: {cleanup_error}")
+                        
+                        return converted_path
+                    else:
+                        print("video_utils.py: FALLBACK FAILED - Direct ffmpeg conversion also failed")
+                else:
+                    print(f"video_utils.py: Largest intermediate file too small ({largest_intermediate[2]} bytes)")
+            else:
+                print("video_utils.py: No intermediate audio files found for conversion")
+            
+            # If we reach here, all strategies failed
+            print(f"video_utils.py: All conversion strategies failed for URL: {video_url}")
+            print(f"video_utils.py: yt-dlp error_code: {error_code}")
+            return None
+            
     except Exception as e:
         print(f"video_utils.py: EXCEPTION during yt-dlp processing for URL {video_url}!")
         print(f"video_utils.py: Exception type: {type(e)}")
