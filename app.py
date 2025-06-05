@@ -64,8 +64,10 @@ def main():
         """)
         
         st.header("🗺️ Supported Accents")
+        st.markdown("**Currently supported (Azure limitation):**")
         for accent in get_supported_accents():
             st.write(f"• {accent}")
+        st.markdown("*Note: Limited to 4 accents due to Azure Speech Services DetectAudioAtStart constraints.*")
         
         st.header("🔧 Requirements")
         st.markdown("""
@@ -142,7 +144,7 @@ def main():
         
         🎯 **Identify** English language variants
         
-        🗺️ **Classify** regional accents
+        🗺️ **Classify** 4 regional accents (US, UK, AU, CA)
         
         📊 **Provide** confidence scores (0-100%)
         
@@ -151,6 +153,8 @@ def main():
         🔄 **Support** multiple input methods:
         - Video URLs from popular platforms
         - Direct file uploads
+        
+        **Note:** Currently limited to 4 accents due to Azure Speech Services DetectAudioAtStart API constraints.
         """)
         
         st.header("🔍 Processing Steps")

@@ -166,16 +166,11 @@ def get_supported_accents() -> list:
     Get list of supported accent classifications.
     
     Returns:
-        List of supported accent names
+        List of supported accent names (limited by Azure DetectAudioAtStart)
     """
     return [
         "American English",
         "British English", 
         "Australian English",
-        "Canadian English",
-        "Indian English",
-        "New Zealand English",
-        "South African English",
-        "Irish English",
-        "Singaporean English"
+        "Canadian English"
     ] 
