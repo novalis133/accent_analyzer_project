@@ -170,8 +170,11 @@ def analyze_audio_with_azure(audio_filepath: str) -> Optional[Dict]:
             # Extract confidence from detailed JSON if available
             confidence = 0.0
             try:
-                if result.properties.get(speechsdk.PropertyId.SpeechServiceResponse_JsonResult):
-                    json_result = json.loads(result.properties[speechsdk.PropertyId.SpeechServiceResponse_JsonResult])
+                # Check if the JSON response property is available
+                json_response_property = result.properties.get(speechsdk.PropertyId.SpeechServiceResponse_JsonResult)
+                if json_response_property:
+                    print(f"DEBUG_AZURE_JSON_FOUND: Successfully retrieved JSON response property")
+                    json_result = json.loads(json_response_property)
                     print(f"DEBUG_AZURE_JSON_RESPONSE: {json.dumps(json_result, indent=2)}")
                     
                     # Try to extract confidence from different possible locations in the JSON
@@ -187,6 +190,9 @@ def analyze_audio_with_azure(audio_filepath: str) -> Optional[Dict]:
                         # Default confidence based on result reason
                         confidence = 0.85  # High confidence for successful recognition
                         print(f"DEBUG_AZURE_CONFIDENCE_DEFAULT: {confidence}")
+                else:
+                    print("DEBUG_AZURE_JSON_NOT_FOUND: PropertyId.SpeechServiceResponse_JsonResult not found in result.properties")
+                    confidence = 0.80  # Default confidence when no detailed JSON is available
                         
             except (json.JSONDecodeError, KeyError) as e:
                 print(f"DEBUG_AZURE_JSON_ERROR: Could not parse confidence from JSON: {e}")
